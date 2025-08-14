@@ -9,16 +9,21 @@ library(fastDummies)
 library(stargazer)
 library(spdep)
 
+# Seteo de directorio y abro la bases
+
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 terrenos <- read.csv("Terrenos-en-venta-2019.csv")
+
+# Chequeo de NAs, vacíos o valores negativos
 summary(terrenos)
-#ver si son NA, vacíos o valores negativos
 colSums(is.na(terrenos))
 colSums(terrenos == "", na.rm = TRUE)
 colSums(terrenos < 0, na.rm = TRUE)
-#borro los negativos y los = 0
+
+# Limpieza: elimino negativos y ceros
 df <- df %>%
   filter(M2TOTAL > 0, PRECIOUSD > 0)
+
 # Calculo los log
 terrenos <- terrenos %>%
   mutate(
@@ -26,35 +31,44 @@ terrenos <- terrenos %>%
     ln_m2total   = log(M2TOTAL)
   )
 
-reg1 <- lm(ln_preciousd ~ ln_m2total + BARRIO, 
+# Regresión base
+reg_base <- lm(ln_preciousd ~ ln_m2total + BARRIO, 
            data = terrenos)
-summary(reg1)
+summary(reg_base)
 
-stargazer(reg1, type = "latex",
+# Exportar modelo a LaTeX
+stargazer(reg_base, type = "latex",
           title = "Modelo de Precios de Terrenos",
           label = "MODELO",
           dep.var.labels = "Log(Precio USD)",
           covariate.labels = c("Log(M2)", levels(terrenos$barrio)[-1]),
           omit.stat = c("f", "ser"),
           no.space = TRUE)
-#descargo la base
 
+# Descargo la base limpia con y sin residuos.
 write_csv(terrenos, "terrenos_limpio.csv")
+
 terrenos <- terrenos %>%
-  mutate(residuos_mod1 = residuals(reg1))
+  mutate(residuos_reg_base = residuals(reg_base))
+
 write_csv(terrenos, "terrenos_limpio_res.csv")
 
-#abro el DF con las  varaibles que creamos en qgis
-df <- read.csv("/Users/ninadicostanzopereira/Downloads/base_completa.csv")
-df <- df %>% mutate(ln_preciousd = log(PRECIOUSD),
-                    ln_m2total   = log(M2TOTAL))
-df <- df %>%
-  filter(M2TOTAL > 0, PRECIOUSD > 0)
+# Abro el DF con las  variables que creamos en QGIS y dropeo de nuevo.
+
+df <- read.csv("/Users/ninadicostanzopereira/Downloads/base_completa.csv") %>%
+  filter(M2TOTAL > 0, PRECIOUSD > 0) %>%
+  mutate(
+    ln_preciousd = log(PRECIOUSD),
+    ln_m2total   = log(M2TOTAL)
+  )
 
 # Calcular estadísticas descriptivas
 stats <- df %>%
   st_drop_geometry() %>%
-  summarise(across(c(count_NUMPOINTS, Matrix_distancia_f_Distance, Matrix_.distancia_S_Distance, Matriz_distancia_O_Distance),
+  summarise(across(c(count_NUMPOINTS, 
+                     Matrix_distancia_f_Distance, 
+                     Matrix_.distancia_S_Distance, 
+                     Matriz_distancia_O_Distance),
                    list(
                      media = ~ mean(.x, na.rm = TRUE),
                      mediana = ~ median(.x, na.rm = TRUE),
@@ -67,22 +81,30 @@ stats <- df %>%
 # Calcular correlaciones con la variable dependiente
 correls <- df %>%
   st_drop_geometry() %>%
-  summarise(across(c(count_NUMPOINTS, Matrix_distancia_f_Distance, Matrix_.distancia_S_Distance, Matriz_distancia_O_Distance),
+  summarise(across(c(count_NUMPOINTS, 
+                     Matrix_distancia_f_Distance, 
+                     Matrix_.distancia_S_Distance, 
+                     Matriz_distancia_O_Distance),
                    ~ cor(.x, ln_preciousd, use = "complete.obs"),
                    .names = "{.col}_correl"))
 
 # Unir en una sola tabla para exportar
-tabla_final <- bind_cols(stats, correls)
 
-# Ver tabla
+tabla_final <- bind_cols(stats, correls)
 print(tabla_final)
 
 
-reg2 <- lm(ln_preciousd ~ ln_m2total + BARRIO + count_NUMPOINTS + Matrix_distancia_f_Distance + Matrix_.distancia_S_Distance + Matriz_distancia_O_Distance, 
+reg2 <- lm(ln_preciousd ~ ln_m2total + BARRIO + 
+             count_NUMPOINTS + 
+             Matrix_distancia_f_Distance + 
+             Matrix_.distancia_S_Distance + 
+             Matriz_distancia_O_Distance, 
            data = df) 
 summary(reg2)
 
-stargazer(reg2, type = "latex",
+# Exportar segundo modelo a LaTeX
+
+stargazer(reg, type = "latex",
           title = "Modelo de Precios de Terrenos",
           label = "MODELO",
           dep.var.labels = "Log(Precio USD)",
