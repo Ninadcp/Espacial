@@ -21,7 +21,7 @@ colSums(terrenos == "", na.rm = TRUE)
 colSums(terrenos < 0, na.rm = TRUE)
 
 # Limpieza: elimino negativos y ceros
-df <- df %>%
+terrenos <- terrenos %>%
   filter(M2TOTAL > 0, PRECIOUSD > 0)
 
 # Calculo los log
@@ -114,3 +114,17 @@ stargazer(reg, type = "latex",
 
 
 
+base <- read.csv("base_completa.csv")
+terrenos_res <- read_csv("terrenos_limpio_res.csv")
+intersect(names(base), names(terrenos_res))
+
+base_final <- base %>%
+  left_join(
+    dplyr::select(terrenos_res, POLY_ID, residuos_reg_base),
+    by = "POLY_ID") %>%
+      mutate(
+        ln_preciousd = log(PRECIOUSD),
+        ln_m2total   = log(M2TOTAL)
+      )
+  
+write_csv(base_final, "base_completa_con_residuos.csv")
