@@ -93,7 +93,7 @@ correls <- df %>%
 tabla_final <- bind_cols(stats, correls)
 print(tabla_final)
 
-
+#preguntar
 reg2 <- lm(ln_preciousd ~ ln_m2total + BARRIO + 
              count_NUMPOINTS + 
              Matrix_distancia_f_Distance + 
@@ -112,9 +112,7 @@ stargazer(reg, type = "latex",
           omit.stat = c("f", "ser"),
           no.space = TRUE)
 
-
-
-base <- read.csv("base_completa.csv")
+base <- read.csv("/Users/ninadicostanzopereira/Desktop/Espacial/TP1/base_completa.csv")
 terrenos_res <- read_csv("terrenos_limpio_res.csv")
 intersect(names(base), names(terrenos_res))
 
@@ -126,5 +124,6 @@ base_final <- base %>%
         ln_preciousd = log(PRECIOUSD),
         ln_m2total   = log(M2TOTAL)
       )
-  
+base_final <- base_final %>%
+  mutate(residuos_reg2 = residuals(reg2))
 write_csv(base_final, "base_completa_con_residuos.csv")
